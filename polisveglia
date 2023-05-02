@@ -1,0 +1,13 @@
+import os 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import time
+
+#polisveglia podcast
+os.environ['PATH']+=r"C:\Users\glagu\Desktop\università\project"
+driver = webdriver.Chrome()
+driver.get("https://www.poliradio.it/show/74/polisveglia")
+driver.implicitly_wait(10)
+episode= driver.find_element(By.TAG_NAME, 'iframe').get_attribute("src")
+driver.get(episode)
+print(driver.current_url)
