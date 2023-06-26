@@ -33,3 +33,24 @@ int main(){
     
     return 0;
 }
+/*
+while(curr!=NULL){
+                if(curr->km<new->km){
+                    if(curr->km+curr->cars[0]>=new->km){
+                        inserisci_adiacente(curr, new);
+                    }
+                    if(new->km-new->cars[0]<=curr->km){
+                        inserisci_adiacente(new,curr);
+                    }
+                }
+                if(curr->km>new->km){
+                    if(curr->km-curr->cars[0]<= new->km){
+                        inserisci_adiacente(curr,new);
+                    }
+                    if(new->km+new->cars[0]>=curr->km){
+                        inserisci_adiacente(new,curr);
+                    }
+                }
+                curr=curr->next;
+            }
+*/
