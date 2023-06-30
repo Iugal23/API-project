@@ -142,7 +142,7 @@ autostrada dequeue(struct queue* Q){
 
 autostrada aggiungi_stazione(autostrada A,int dist,int n, int* bat);
 void inserisci_adiacente(autostrada A,autostrada nodo);
-void rimuovi_stazione(autostrada A,int km_del);
+autostrada rimuovi_stazione(autostrada A,int km_del);
 void inserisci_auto(autostrada A,int km_staz,int car);
 void rimuovi_auto(autostrada A,int km_staz,int car);
 void calcolo_percorso(autostrada A, int part, int dest);
@@ -180,7 +180,7 @@ int main(){
         else if(command[0]=='d'){
             x=input(command);
             dist=atoi(command);
-            rimuovi_stazione(A,dist);
+            A=rimuovi_stazione(A,dist);
         }
         else if(command[0]=='r'){
             x=input(command);
@@ -198,7 +198,6 @@ int main(){
         }
     }while(x!=EOF);
  
-    free(A);
     return 0;
 
 }
@@ -245,26 +244,32 @@ autostrada aggiungi_stazione(autostrada A,int dist,int n, int* bat ){
 
 
 }
-void rimuovi_stazione(autostrada A , int km_del){
+autostrada rimuovi_stazione(autostrada A , int km_del){
     autostrada curr=A,prec=NULL;
     while(curr!=NULL && curr->km!=km_del){
         prec=curr;
         curr=curr->next;
         if(curr==NULL || curr->km>km_del){
             printf("non demolita\n");
-            return;
+            return A;
 
         }
     }
     if(curr!=NULL){
-        prec->next=curr->next;
+        if(curr==A){
+            A=A->next;
+        }
+        else{
+            prec->next=curr->next;
+        }
         free(curr);
         printf("demolita\n");
-        
     }
     else{
         printf("non demolita\n");
+
     }
+    return A;
 }
 void inserisci_adiacente(autostrada A, autostrada new){
     A->adj_num++;
@@ -385,6 +390,17 @@ void calcolo_percorso(autostrada A, int part, int dest){
         }
         curr1=curr1->next;
     }
+    /*
+    curr1=A;
+    while(curr1!=NULL){
+        printf("%d: ",curr1->km);
+        for(int i=0;i<curr1->adj_num;i++){
+            printf("%d->",curr1->graph[i]->km);
+        }
+        printf("\n");
+        curr1=curr1->next;
+    }
+    */
     while(Q->tail!=NULL){
         curr1=dequeue(Q);
         for(int i=0;i<curr1->adj_num;i++){
@@ -403,6 +419,8 @@ void calcolo_percorso(autostrada A, int part, int dest){
         }
     }
     free(Q);
+
+    
     printf("nessun percorso\n");
 }
 
@@ -417,10 +435,21 @@ void stampa_percorso(autostrada stop, int part){
 }
 
 /*
-percorsi sbagliati
+percorsi sbagliati 
 9
 15
 17
 21
 24
+27
+33
+37
+41
+43
+45
+46
+47
+
+seg fault
+ 
 */
