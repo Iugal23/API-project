@@ -82,17 +82,13 @@ struct stazione{
     int car_num;
     int *cars;
     struct stazione *next; // puntatore alla prossima stazione della autostrada
-    int dist;
-    char col;
-    int adj_num;
-    struct stazione **graph; // array con le stazioni adiacenti
-    struct stazione *prev_stop; //puntatore alla tappa precedente del percorso
+    
 };
 typedef struct stazione *autostrada;
 
 //QUEUE
 struct nodo{
-    autostrada el;
+    struct grafo* el;
     struct nodo* next;
     struct nodo* prev;
 };
@@ -100,10 +96,12 @@ struct queue{
     struct nodo* head;
     struct nodo* tail;
 };
-struct queue* enqueue(struct queue* Q,autostrada new);
-autostrada dequeue(struct queue* Q);
 
-struct queue* enqueue(struct queue* Q,autostrada new){
+
+struct queue* enqueue(struct queue* Q, struct grafo* new);
+struct grafo* dequeue(struct queue* Q);
+
+struct queue* enqueue(struct queue* Q,struct grafo* new){
     struct nodo* n=malloc(sizeof(struct nodo));
     n->el=new;
     n->next=NULL;
@@ -120,8 +118,8 @@ struct queue* enqueue(struct queue* Q,autostrada new){
         return Q;
     }
 }
-autostrada dequeue(struct queue* Q){
-    autostrada r;
+struct grafo* dequeue(struct queue* Q){
+    struct grafo* r;
     struct nodo* temp;
     if(Q->tail!=NULL){
         r=Q->tail->el;
@@ -140,6 +138,15 @@ autostrada dequeue(struct queue* Q){
     }
 }
 
+struct grafo{
+    int km;
+    int max_car;
+    int dist;
+    char col;
+    struct grafo* next;
+    struct grafo *prev_stop; //puntatore alla tappa precedente del percorso
+
+};
 autostrada aggiungi_stazione(autostrada A,int dist,int n, int* bat);
 void inserisci_adiacente(autostrada A, autostrada new);
 autostrada rimuovi_stazione(autostrada A,int km_del);
@@ -147,7 +154,7 @@ void inserisci_auto(autostrada A,int km_staz,int car);
 void rimuovi_auto(autostrada A,int km_staz,int car);
 void calcolo_percorso_1(autostrada A, int part, int dest);
 void calcolo_percorso_2(autostrada A, int part, int dest);
-void stampa_percorso(autostrada stop, int part);
+void stampa_percorso(struct grafo* stop, int part);
 
 int main(){ 
     autostrada A=NULL;
@@ -217,8 +224,6 @@ autostrada aggiungi_stazione(autostrada A,int dist,int n, int* bat ){
     new->km=dist;
     new->car_num=n;
     new->cars=malloc(n*sizeof(int));
-    new->adj_num=0;
-    new->graph=NULL;
     for(int i=0;i<n;i++){
         new->cars[i]=bat[i];
     }
@@ -273,7 +278,6 @@ autostrada rimuovi_stazione(autostrada A , int km_del){
             prec->next=curr->next;
         }
         free(curr->cars);
-        free(curr->graph);
         free(curr);
         printf("demolita\n");
     }
@@ -283,10 +287,7 @@ autostrada rimuovi_stazione(autostrada A , int km_del){
     }
     return A;
 }
-void inserisci_adiacente(autostrada A, autostrada new){
-    A->graph[A->adj_num]=new;
-    A->adj_num++;
-}
+
 void inserisci_auto(autostrada A,int km_staz,int car){
     autostrada curr=A;
     while(curr!=NULL){
@@ -332,149 +333,147 @@ void rimuovi_auto(autostrada A,int km_staz,int car){
 
 void calcolo_percorso_1(autostrada A, int part, int dest){
     // creazione grafo
-    autostrada curr1=A, curr2,end=NULL;
-    int station_num=0;
+    autostrada curr1=A ;
+    struct grafo *G=malloc(sizeof(struct grafo)), *p=NULL,*p2,*end=NULL, *start=NULL;
     struct queue*  Q=malloc(sizeof(struct queue));
     Q->tail=NULL; Q->head=NULL;
 
-    while(curr1!=NULL){
-        curr1->adj_num=0;
-        free(curr1->graph);
-        curr1->graph=NULL;
-        curr1->dist=0;
-        if(curr1->km!=part){
-            curr1->col='w';
+    while(curr1!=NULL && curr1->km<part){
+        curr1=curr1->next;
+    }
+    p=G;
+    while(curr1!=NULL && curr1->km<=dest){
+        p2=malloc(sizeof(struct grafo));
+        p2->km=curr1->km;
+        p2->max_car=curr1->cars[0];
+        p2->dist=0;
+        if(p2->km==part){
+            start=p2;
+            p2->col='g';
+            Q=enqueue(Q,p2);
         }
         else{
-            curr1->col='g';
-            Q=enqueue(Q,curr1);
+            p2->col='w';
         }
-        if(curr1->km==dest){
-            end=curr1;
+        if(p2->km==dest){
+            end=p2;
         }
+        p->next=p2;
+        p=p->next;
         curr1=curr1->next;
-        station_num++;
     }
-    if(end==NULL){
+    if(end==NULL || start==NULL){
         printf("nessun percorso\n");
         return;
     }
-    curr1=Q->tail->el;
-    while(curr1!=NULL && curr1->km<=dest){
-        curr1->graph=malloc(station_num*sizeof(autostrada));
-        curr2=curr1->next;
-        while(curr2!=NULL && curr2->km<=dest){
-            if(curr1->km+curr1->cars[0]>=curr2->km){
-                inserisci_adiacente(curr1,curr2);
-            }
-            curr2=curr2->next;
-        }
-        curr1->graph=realloc(curr1->graph,curr1->adj_num*sizeof(autostrada));
-        curr1=curr1->next;
-    }
+        
     while(Q->tail!=NULL){
-        curr1=dequeue(Q);
-        for(int i=0;i<curr1->adj_num;i++){
-            if(curr1->graph[i]->col=='w'){
-                curr1->graph[i]->col='g';
-                curr1->graph[i]->dist=curr1->dist+1;
-                curr1->graph[i]->prev_stop=curr1;
-                Q=enqueue(Q,curr1->graph[i]);
-                if(curr1->graph[i]->km==dest){
-                    stampa_percorso(curr1->graph[i],part);
-                    printf("\n");
-                    free(Q);
-                    return;
+        p=dequeue(Q);
+        p2=p->next; 
+        while(p2!=NULL){
+            if(p->km+p->max_car>=p2->km){
+                if(p2->col=='w'){
+                    p2->col='g';
+                    p2->dist=p2->dist+1;
+                    p2->prev_stop=p;
+                    Q=enqueue(Q,p2);
+                    if(p2->km==dest){
+                        stampa_percorso(p2,part);
+                        printf("\n");
+                        free(Q);
+                        return;
+                    }
                 }
+                p2=p2->next;
+                
             }
+            else{
+                break;
+            }
+
         }
+        
     }
     free(Q);
 
     
     printf("nessun percorso\n");
 }
+
 void calcolo_percorso_2(autostrada A, int part, int dest){
-    // creazione grafo;
-    autostrada curr1=A, curr2, last_stop=NULL,start=NULL;
-    int station_num=0;
+    // creazione grafo
+    autostrada curr1=A ;
+    struct grafo *G=malloc(sizeof(struct grafo)), *p=NULL,*p2,*end=NULL, *start=NULL,*last_stop=NULL;
     struct queue*  Q=malloc(sizeof(struct queue));
     Q->tail=NULL; Q->head=NULL;
 
-    while(curr1!=NULL){
-        curr1->adj_num=0;
-        free(curr1->graph);
-        curr1->graph=NULL;
-        curr1->dist=0;
-        if(curr1->km!=part){
-            curr1->col='w';
+    while(curr1!=NULL && curr1->km<dest){
+        curr1=curr1->next;
+    }
+    p=G;
+    while(curr1!=NULL && curr1->km<=part){
+        p2=malloc(sizeof(struct grafo));
+        p2->km=curr1->km;
+        p2->max_car=curr1->cars[0];
+        p2->dist=0;
+        if(p2->km==part){
+            start=p2;
+            p2->col='g';
+            Q=enqueue(Q,p2);
         }
         else{
-            curr1->col='g';
-            Q=enqueue(Q,curr1);
+            p2->col='w';
         }
-        if(curr1->km==dest){
-            start=curr1;
+        if(p2->km==dest){
+            end=p2;
         }
+        p->next=p2;
+        p2->next=NULL;
+        p=p->next;
         curr1=curr1->next;
-        station_num++;
     }
-    if(start==NULL){
+    if(end==NULL || start==NULL){
         printf("nessun percorso\n");
         return;
     }
-    curr1=start;
-    while(curr1!=NULL  && curr1->km<=part){
-        curr2=curr1->next;
-        while(curr2!=NULL && curr2->km<=part){
-            if(curr2->km-curr2->cars[0]<=curr1->km){
-                if(curr2->adj_num>0){
-                    curr2->graph[curr2->adj_num]=curr1;
-                    curr2->adj_num++;
-                }
-                else{
-                    curr2->graph=malloc(station_num*sizeof(autostrada));
-                    curr2->graph[0]=curr1;
-                    curr2->adj_num++;
-                }
-            }
-            curr2=curr2->next;
-        }
-        curr1->graph=realloc(curr1->graph,curr1->adj_num*sizeof(autostrada));
-        curr1=curr1->next;
-    }
+        
     while(Q->tail!=NULL){
-        curr1=dequeue(Q);
-        for(int i=0;i<curr1->adj_num;i++){
-            if(curr1->graph[i]->col=='g'){
-                if(curr1->dist+1<=curr1->graph[i]->dist && curr1->km<curr1->graph[i]->prev_stop->km ){
-                    curr1->graph[i]->dist=curr1->dist+1;
-                    curr1->graph[i]->prev_stop=curr1;
+        p=dequeue(Q);
+        p2=end; 
+        while(p2!=NULL && p2->km<p->km){
+            if(p->km-p->max_car<=p2->km){
+                if(p2->col=='w'){
+                    p2->col='g';
+                    p2->dist=p->dist+1;
+                    p2->prev_stop=p;
+                    Q=enqueue(Q,p2);
+                    if(p2->km==dest){
+                        last_stop=p2;
+                    }
                 }
-
-            }
-            else if(curr1->graph[i]->col=='w'){
-                curr1->graph[i]->col='g';
-                curr1->graph[i]->dist=curr1->dist+1;
-                curr1->graph[i]->prev_stop=curr1;
-                Q=enqueue(Q,curr1->graph[i]);
-                if(curr1->graph[i]->km==dest){
-                    last_stop=curr1->graph[i];
+                else if(p2->col=='g'){
+                    if(p->dist+1<=p2->dist && p->km<p2->prev_stop->km){
+                        p2->dist=p->dist+1;
+                        p2->prev_stop=p;
+                    }
                 }
-            }
-        }     
-    }
     
-    if(last_stop==NULL){
-        printf("nessun percorso\n");
+            }
+            p2=p2->next;
+        } 
+    }
+    free(Q);
+    if(last_stop!=NULL){
+        stampa_percorso(last_stop,part);
+        printf("\n");
+        free(G);
         return;
     }
-    stampa_percorso(last_stop,part);
-    printf("\n");
-    
+    free(G); 
+    printf("nessun percorso\n");
 }
 
-void stampa_percorso(autostrada stop, int part){
+void stampa_percorso(struct grafo *stop, int part){
     if(stop->km!=part){
         stampa_percorso(stop->prev_stop,part);
         printf(" %d",stop->km);

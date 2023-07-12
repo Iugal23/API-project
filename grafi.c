@@ -54,3 +54,15 @@ while(curr!=NULL){
                 curr=curr->next;
             }
 */
+
+curr1=A;
+    while(curr1!=NULL){
+        printf("%d:",curr1->km);
+        for(int i=0;i<curr1->adj_num;i++){
+            printf("%d->",curr1->graph[i]->km);
+        }
+        printf("\n");
+        curr1=curr1->next;
+    }
+    p station_num*sizeof(autostrada)
+    r <open_100.txt >output.txt

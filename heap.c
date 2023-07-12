@@ -36,14 +36,11 @@ int main(){
         a[i]=i+1;
     }
     build_max_heap(a,10);
-    a=realloc(a,11*sizeof(int));
-    a[10]=13;
-    heap_insert_fix(a,10);
-    for(int i=0;i<11;i++){
-        printf("%d ",a[i]);
+    a=realloc(a,9*sizeof(int));
+    
+    for(int i=0;i<=5;i++){
+        heap_delete_fix(a,i,9);
     }
-    printf("\n");
-    //heap_delete_fix(a,5,9);
 
     return 0;
 }
