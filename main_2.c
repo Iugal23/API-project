@@ -82,6 +82,7 @@ struct stazione{
     int car_num;
     int *cars;
     struct stazione *next; // puntatore alla prossima stazione della autostrada
+    struct stazione *prev; // puntatore alla precedente stazione della autostrada
     
 };
 typedef struct stazione *autostrada;
@@ -236,11 +237,16 @@ autostrada aggiungi_stazione(autostrada A,int dist,int n, int* bat ){
         }
         if(curr==NULL || curr->km!= new->km){    
             new->next=curr;
+            if(curr!=NULL){
+                curr->prev=new;
+            }
             if(prec!=NULL){  // new NON è la nuova testa della list
                 prec->next=new;
+                new->prev=prec;
             }
             else{
                 A=new;
+                new->prev=NULL;
             }
             printf("aggiunta\n");
         
@@ -253,6 +259,7 @@ autostrada aggiungi_stazione(autostrada A,int dist,int n, int* bat ){
     else{
         A=new;
         new->next=NULL;
+        new->prev=NULL;
         printf("aggiunta\n");
     }
     return A;
@@ -273,9 +280,16 @@ autostrada rimuovi_stazione(autostrada A , int km_del){
     if(curr!=NULL){
         if(curr==A){
             A=A->next;
+            if(A!=NULL){
+                A->prev=NULL;
+            }
         }
         else{
             prec->next=curr->next;
+            if(curr->next!=NULL){
+                curr->next->prev=prec;
+            }
+            
         }
         free(curr->cars);
         free(curr);
@@ -406,12 +420,12 @@ void calcolo_percorso_2(autostrada A, int part, int dest){
     struct grafo *G=malloc(sizeof(struct grafo)), *p=NULL,*p2,*end=NULL, *start=NULL,*last_stop=NULL;
     struct queue*  Q=malloc(sizeof(struct queue));
     Q->tail=NULL; Q->head=NULL;
-
-    while(curr1!=NULL && curr1->km<dest){
+    
+    while(curr1!=NULL && curr1->km<part){
         curr1=curr1->next;
     }
     p=G;
-    while(curr1!=NULL && curr1->km<=part){
+    while(curr1!=NULL && curr1->km>=dest){
         p2=malloc(sizeof(struct grafo));
         p2->km=curr1->km;
         p2->max_car=curr1->cars[0];
@@ -430,17 +444,17 @@ void calcolo_percorso_2(autostrada A, int part, int dest){
         p->next=p2;
         p2->next=NULL;
         p=p->next;
-        curr1=curr1->next;
+        curr1=curr1->prev;
     }
     if(end==NULL || start==NULL){
         printf("nessun percorso\n");
         return;
     }
-        
+    
     while(Q->tail!=NULL){
         p=dequeue(Q);
-        p2=end; 
-        while(p2!=NULL && p2->km<p->km){
+        p2=p->next; 
+        while(p2!=NULL){
             if(p->km-p->max_car<=p2->km){
                 if(p2->col=='w'){
                     p2->col='g';
@@ -457,9 +471,12 @@ void calcolo_percorso_2(autostrada A, int part, int dest){
                         p2->prev_stop=p;
                     }
                 }
-    
+                p2=p2->next;
             }
-            p2=p2->next;
+            else{
+                break;
+            }
+            
         } 
     }
     free(Q);
