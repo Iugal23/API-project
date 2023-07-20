@@ -80,12 +80,66 @@ void heap_delete_fix(int *a,int i,int length){
 struct stazione{
     int km;
     int car_num;
-    int *cars;
-    struct stazione *next; // puntatore alla prossima stazione della autostrada
-    struct stazione *prev; // puntatore alla precedente stazione della autostrada
+    int *cars;  
+};
+
+// TREE
+struct BSTnode
+{
+    struct stazione* stazione;
+    struct BSTnode *right;
+    struct BSTnode *left;
+    struct BSTnode *parent;
     
 };
-typedef struct stazione *autostrada;
+typedef struct BSTnode *autostrada;
+
+autostrada tree_search(autostrada T, int km){
+    autostrada temp=T;
+    while(temp!=NULL && temp->stazione->km!=km){
+        if(temp->stazione->km<km){
+            temp=temp->right;
+        }
+        else{
+            temp=temp->left;
+        }
+    }
+    return temp;
+}
+autostrada tree_successor(autostrada T){
+    autostrada curr,r;
+    if(T->right!=NULL){
+        curr=T->right;
+        while(curr->left!=NULL){
+            curr=curr->left;
+        }
+        return curr;
+    }
+    r=T->parent;
+    curr=T;
+    while(r!=NULL && curr==r->right){
+        curr=r;
+        r=r->parent;
+    }
+    return r;
+}
+autostrada tree_predecessor(autostrada T){
+    autostrada curr=T,r;
+    if(T->left!=NULL){
+        curr=T->left;
+        while(curr->right!=NULL){
+            curr=curr->right;
+        }
+        return curr;
+    }
+    r=T->parent;
+    curr=T;
+    while(r!=NULL && curr==r->left){
+        curr=r;
+        r=r->parent;
+    }
+    return r;
+}
 
 //QUEUE
 struct nodo{
@@ -221,128 +275,124 @@ int main(){
 }
 
 autostrada aggiungi_stazione(autostrada A,int dist,int n, int* bat ){
-    autostrada curr=A,prec=NULL, new=malloc(sizeof(struct stazione));
-    new->km=dist;
-    new->car_num=n;
-    new->cars=malloc(n*sizeof(int));
+    autostrada new=malloc(sizeof(struct BSTnode)),curr=A,prev=NULL;
+    struct stazione *staz=malloc(sizeof(struct stazione));
+    staz->km=dist;
+    staz->cars=malloc(n*sizeof(int));
+    staz->car_num=n;
     for(int i=0;i<n;i++){
-        new->cars[i]=bat[i];
+        staz->cars[i]=bat[i];
     }
-    build_max_heap(new->cars, new->car_num); // uso un heap in modo tale che il primo elemento sia sempre il max
-    
-    if(curr!=NULL){
-        while(curr!=NULL && curr->km<new->km){
-        prec=curr;
-        curr=curr->next;
+    build_max_heap(staz->cars, staz->car_num); // uso un heap in modo tale che il primo elemento sia sempre il max
+    new->stazione=staz;
+    new->left=NULL;  
+    new->right=NULL;
+
+    while(curr!=NULL){
+        prev=curr;
+        if(curr->stazione->km==new->stazione->km){
+            printf("non aggiunta\n");
+            return A;
         }
-        if(curr==NULL || curr->km!= new->km){    
-            new->next=curr;
-            if(curr!=NULL){
-                curr->prev=new;
-            }
-            if(prec!=NULL){  // new NON è la nuova testa della list
-                prec->next=new;
-                new->prev=prec;
-            }
-            else{
-                A=new;
-                new->prev=NULL;
-            }
-            printf("aggiunta\n");
-        
+        if(curr->stazione->km>new->stazione->km){
+            curr=curr->left;
         }
         else{
-            printf("non aggiunta\n");
+            curr=curr->right;
         }
-
+    }
+    new->parent=prev;
+    if(prev==NULL){
+        A=new;
+    }
+    else if(new->stazione->km<prev->stazione->km){
+        prev->left=new;
     }
     else{
-        A=new;
-        new->next=NULL;
-        new->prev=NULL;
-        printf("aggiunta\n");
+        prev->right=new;
     }
+    printf("aggiunta\n");
     return A;
-
+    
 
 }
 autostrada rimuovi_stazione(autostrada A , int km_del){
-    autostrada curr=A,prec=NULL;
-    while(curr!=NULL && curr->km!=km_del){
-        prec=curr;
-        curr=curr->next;
-        if(curr==NULL || curr->km>km_del){
-            printf("non demolita\n");
-            return A;
-
-        }
-    }
-    if(curr!=NULL){
-        if(curr==A){
-            A=A->next;
-            if(A!=NULL){
-                A->prev=NULL;
-            }
+    autostrada temp,del=NULL,p;
+    temp=tree_search(A,km_del);
+    if(temp!=NULL){
+        if (temp->left==NULL || temp->right==NULL){
+            del=temp;
         }
         else{
-            prec->next=curr->next;
-            if(curr->next!=NULL){
-                curr->next->prev=prec;
-            }
-            
+            del=tree_successor(temp);
         }
-        free(curr->cars);
-        free(curr);
+        if(del->left!=NULL){
+            p=del->left;
+        }
+        else{
+            p=del->right;
+        }
+        if(p!=NULL){
+            p->parent=del->parent;
+        }
+        if(del->parent==NULL){
+            A=p;
+        }
+        else if(del==del->parent->left){
+            del->parent->left=p;
+        }
+        else{
+            del->parent->right=p;
+        }
+        if(del!=temp){
+            temp->stazione=del->stazione;
+        }
         printf("demolita\n");
     }
     else{
         printf("non demolita\n");
-
     }
     return A;
 }
 
 void inserisci_auto(autostrada A,int km_staz,int car){
-    autostrada curr=A;
-    while(curr!=NULL){
-        if(curr->km==km_staz){
-            curr->car_num++;
-            curr->cars=realloc(curr->cars,curr->car_num*sizeof(int));
-            curr->cars[curr->car_num-1]=car;
-            heap_insert_fix(curr->cars,curr->car_num-1);
-            printf("aggiunta\n");
-            return;
-        }
-        curr=curr->next;
+    autostrada curr;
+    curr=tree_search(A,km_staz);
+    if(curr!=NULL){
+        curr->stazione->car_num++;
+        curr->stazione->cars=realloc(curr->stazione->cars,curr->stazione->car_num*sizeof(int));
+        curr->stazione->cars[curr->stazione->car_num-1]=car;
+        heap_insert_fix(curr->stazione->cars,curr->stazione->car_num-1);
+        printf("aggiunta\n");
     }
-    printf("non aggiunta\n");
-    return;
+    else{
+        printf("non aggiunta\n");
+    }
 }
 void rimuovi_auto(autostrada A,int km_staz,int car){
     int* temp;
-    autostrada curr=A;
-    while(curr!=NULL){
-        if(curr->km==km_staz){
-            for(int i=0;i<curr->car_num;i++){
-                if(curr->cars[i]==car){
-                    curr->car_num--;
-                    curr->cars[i]=curr->cars[curr->car_num];
-                    temp=realloc(curr->cars,curr->car_num*sizeof(int));
-                    if(temp!=NULL){
-                        curr->cars=temp;
-                    }
-                    heap_delete_fix(curr->cars,i,curr->car_num);
-                    printf("rottamata\n");
-                    return;
+    autostrada curr=tree_search(A,km_staz);
+
+    if(curr!=NULL){
+        for(int i=0;i<curr->stazione->car_num;i++){
+            if(curr->stazione->cars[i]==car){
+                curr->stazione->car_num--;
+                curr->stazione->cars[i]=curr->stazione->cars[curr->stazione->car_num];
+                temp=realloc(curr->stazione->cars,curr->stazione->car_num*sizeof(int));
+                if(temp!=NULL){
+                    curr->stazione->cars=temp;
                 }
+                heap_delete_fix(curr->stazione->cars,i,curr->stazione->car_num);
+                printf("rottamata\n");
+                return;
             }
-            printf("non rottamata\n");
-            return;  
         }
-        curr=curr->next;
+        printf("non rottamata\n");
+        
     }
-    printf("non rottamata\n");
-    return;
+    else{
+        printf("non rottamata\n");
+    }
 }
 
 void calcolo_percorso_1(autostrada A, int part, int dest){
@@ -352,14 +402,17 @@ void calcolo_percorso_1(autostrada A, int part, int dest){
     struct queue*  Q=malloc(sizeof(struct queue));
     Q->tail=NULL; Q->head=NULL;
 
-    while(curr1!=NULL && curr1->km<part){
-        curr1=curr1->next;
-    }
+    curr1=tree_search(A,part);
     p=G;
-    while(curr1!=NULL && curr1->km<=dest){
+    while(curr1!=NULL && curr1->stazione->km<=dest){
         p2=malloc(sizeof(struct grafo));
-        p2->km=curr1->km;
-        p2->max_car=curr1->cars[0];
+        p2->km=curr1->stazione->km;
+        if(curr1->stazione->car_num!=0){
+            p2->max_car=curr1->stazione->cars[0];
+        }
+        else{
+            p2->max_car=0;
+        }
         p2->dist=0;
         if(p2->km==part){
             start=p2;
@@ -374,7 +427,7 @@ void calcolo_percorso_1(autostrada A, int part, int dest){
         }
         p->next=p2;
         p=p->next;
-        curr1=curr1->next;
+        curr1=tree_successor(curr1);
     }
     if(end==NULL || start==NULL){
         printf("nessun percorso\n");
@@ -416,19 +469,21 @@ void calcolo_percorso_1(autostrada A, int part, int dest){
 
 void calcolo_percorso_2(autostrada A, int part, int dest){
     // creazione grafo
-    autostrada curr1=A ;
+    autostrada curr1=tree_search(A,part) ;
     struct grafo *G=malloc(sizeof(struct grafo)), *p=NULL,*p2,*end=NULL, *start=NULL,*last_stop=NULL;
     struct queue*  Q=malloc(sizeof(struct queue));
     Q->tail=NULL; Q->head=NULL;
     
-    while(curr1!=NULL && curr1->km<part){
-        curr1=curr1->next;
-    }
     p=G;
-    while(curr1!=NULL && curr1->km>=dest){
+    while(curr1!=NULL && curr1->stazione->km>=dest){
         p2=malloc(sizeof(struct grafo));
-        p2->km=curr1->km;
-        p2->max_car=curr1->cars[0];
+        p2->km=curr1->stazione->km;
+        if(curr1->stazione->car_num!=0){
+            p2->max_car=curr1->stazione->cars[0];
+        }
+        else{
+            p2->max_car=0;
+        }
         p2->dist=0;
         if(p2->km==part){
             start=p2;
@@ -444,7 +499,7 @@ void calcolo_percorso_2(autostrada A, int part, int dest){
         p->next=p2;
         p2->next=NULL;
         p=p->next;
-        curr1=curr1->prev;
+        curr1=tree_predecessor(curr1);
     }
     if(end==NULL || start==NULL){
         printf("nessun percorso\n");
